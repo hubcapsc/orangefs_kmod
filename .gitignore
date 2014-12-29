@@ -32,7 +32,6 @@
 *.lzo
 *.patch
 *.gcno
-*.lds
 modules.builtin
 Module.symvers
 *.dwo
