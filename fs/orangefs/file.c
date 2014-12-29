@@ -799,7 +799,7 @@ long pvfs2_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	 */
 	if (cmd == FS_IOC_GETFLAGS) {
 		val = 0;
-		ret = pvfs2_xattr_get_default(file->f_dentry,
+		ret = pvfs2_xattr_get_default(file->f_path.dentry,
 					      "user.pvfs2.meta_hint",
 					      &val,
 					      sizeof(val),
@@ -833,7 +833,7 @@ long pvfs2_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		gossip_debug(GOSSIP_FILE_DEBUG,
 			     "pvfs2_ioctl: FS_IOC_SETFLAGS: %llu\n",
 			     (unsigned long long)val);
-		ret = pvfs2_xattr_set_default(file->f_dentry,
+		ret = pvfs2_xattr_set_default(file->f_path.dentry,
 					      "user.pvfs2.meta_hint",
 					      &val,
 					      sizeof(val),
@@ -852,7 +852,7 @@ static int pvfs2_file_mmap(struct file *file, struct vm_area_struct *vma)
 	gossip_debug(GOSSIP_FILE_DEBUG,
 		     "pvfs2_file_mmap: called on %s\n",
 		     (file ?
-			(char *)file->f_dentry->d_name.name :
+			(char *)file->f_path.dentry->d_name.name :
 			(char *)"Unknown"));
 
 	/* set the sequential readahead hint */
@@ -873,7 +873,7 @@ int pvfs2_file_release(struct inode *inode, struct file *file)
 {
 	gossip_debug(GOSSIP_FILE_DEBUG,
 		     "pvfs2_file_release: called on %s\n",
-		     file->f_dentry->d_name.name);
+		     file->f_path.dentry->d_name.name);
 
 	pvfs2_flush_inode(inode);
 
@@ -882,10 +882,11 @@ int pvfs2_file_release(struct inode *inode, struct file *file)
 	   readahead cache (if any); this forces an expensive refresh of
 	   data for the next caller of mmap (or 'get_block' accesses)
 	 */
-	if (file->f_dentry->d_inode &&
-	    file->f_dentry->d_inode->i_mapping &&
-	    mapping_nrpages(&file->f_dentry->d_inode->i_data))
-		truncate_inode_pages(file->f_dentry->d_inode->i_mapping, 0);
+	if (file->f_path.dentry->d_inode &&
+	    file->f_path.dentry->d_inode->i_mapping &&
+	    mapping_nrpages(&file->f_path.dentry->d_inode->i_data))
+		truncate_inode_pages(file->f_path.dentry->d_inode->i_mapping,
+				     0);
 	return 0;
 }
 
@@ -895,7 +896,8 @@ int pvfs2_file_release(struct inode *inode, struct file *file)
 int pvfs2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 {
 	int ret = -EINVAL;
-	struct pvfs2_inode_s *pvfs2_inode = PVFS2_I(file->f_dentry->d_inode);
+	struct pvfs2_inode_s *pvfs2_inode =
+		PVFS2_I(file->f_path.dentry->d_inode);
 	struct pvfs2_kernel_op *new_op = NULL;
 
 	/* required call */
@@ -908,7 +910,7 @@ int pvfs2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 
 	ret = service_operation(new_op,
 			"pvfs2_fsync",
-			get_interruptible_flag(file->f_dentry->d_inode));
+			get_interruptible_flag(file->f_path.dentry->d_inode));
 
 	gossip_debug(GOSSIP_FILE_DEBUG,
 		     "pvfs2_fsync got return value of %d\n",
@@ -916,7 +918,7 @@ int pvfs2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 
 	op_release(new_op);
 
-	pvfs2_flush_inode(file->f_dentry->d_inode);
+	pvfs2_flush_inode(file->f_path.dentry->d_inode);
 	return ret;
 }
 
@@ -932,7 +934,7 @@ int pvfs2_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 loff_t pvfs2_file_llseek(struct file *file, loff_t offset, int origin)
 {
 	int ret = -EINVAL;
-	struct inode *inode = file->f_dentry->d_inode;
+	struct inode *inode = file->f_path.dentry->d_inode;
 
 	if (!inode) {
 		gossip_err("pvfs2_file_llseek: invalid inode (NULL)\n");
@@ -962,7 +964,7 @@ loff_t pvfs2_file_llseek(struct file *file, loff_t offset, int origin)
 		     "inode size is %lu\n",
 		     (long)offset,
 		     origin,
-		     (unsigned long)file->f_dentry->d_inode->i_size);
+		     (unsigned long)file->f_path.dentry->d_inode->i_size);
 
 	return generic_file_llseek(file, offset, origin);
 }
